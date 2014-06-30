@@ -11,4 +11,5 @@ You should:
 + clone the git repo
 + add site content files to the `inc` folder
 + add new array position in `content.php`, corrosponding to the added files
++ add links to the content in `index.html` (using the same template as the default ones)
 + add icons' actions at the bottom of the `js/main.js` file
