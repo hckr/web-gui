@@ -1,86 +1,83 @@
 ;(function() {
 
 	document.onselectstart=function() {
-		if(moving || resizing) {
+		if(dragging || resizing) {
 			return false;
 		}
 	}
 
 	document.onmousedown=function(e) {
-		if(moving || resizing) {
+		if(dragging || resizing) {
 			if(e) e.preventDefault();
 		}
 	}
 
-	var pX, pY, tempX, tempY, startX, startY, startLeft, startTop, what_moving, zIndex=1;
-	var resizing_dir, what_resizing, startWidth, startHeight, resizing=false;
-	var moving=false, cursor_resizing=false;
-	var tZakladki=new Array(); // tablica z odwołaniem okno-zakładka w taskbarze
-	var tWindows=new Array(); // tablica z odwołaniem zakładka w taskbarze-okno
-	var tWindowsState=new Array(); // stan "zwinięcia" okna
-	var ile=0;
-	var idNr=0; // do id w createWindow();
-	var taskbar=document.getElementById('taskbar'), menu_podreczne=document.getElementById('menu_podr');
-	var active=new Array(); // kolejność aktywności zakładek; pozycja 0 - aktywna
+	var pX, pY, tempX, tempY, startX, startY, startLeft, startTop, what_dragging, zIndex = 1,
+		resizing_dir, what_resizing, startWidth, startHeight, resizing = false,
+		dragging = false, cursor_resizing = false,
+		tTabs = new Array(),
+		tWindows = new Array(),
+		tWindowsState = new Array(), // whether window is minimized or not
+		current_id = 0; // used for id parameter in createWindow()
+		taskbar = document.getElementById('taskbar'),
+		context_menu = document.getElementById('menu_podr');
+		active = new Array(); // tabs activation order - 0-indexed tab is currently active
 
 	// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-	function init_icon(obj, tytul, url) {
-		init_icon_moving(obj);
-		add_icon_func(obj, tytul, url);
+	function init_icon(obj, title, url) {
+		init_icon_dragging(obj);
+		add_icon_func(obj, title, url);
 	}
 
 	function new_ajax() {
-		if(window.XMLHttpRequest) {
-			return new XMLHttpRequest();
-		} else if(window.ActiveXObject("Microsoft.XMLHTTP")) {
-			return new ActiveXObject("Microsoft.XMLHTTP");
-		}
+		return new XMLHttpRequest();
 	}
 
 	function add_icon_func(obj, title, url) {
-		obj.ondblclick=function() {
-			var okno=createWindow(title);
-			okno.innerHTML='Ładowanie zawarości...';
-			ajax=new_ajax();
+		obj.ondblclick = function() {
+			var w = createWindow(title);
+			w.innerHTML = 'Ładowanie zawarości...';
+			ajax = new_ajax();
 			ajax.open('GET', url);
-			ajax.onreadystatechange=function() {
+			ajax.onreadystatechange = function() {
 				if(ajax.readyState==4 && ajax.status==200) {
-					okno.innerHTML=ajax.responseText;
+					w.innerHTML = ajax.responseText;
 				}/* else {
-					okno.innerHTML='Wystąpił błąd HTTP ' + ajax.status;
+					w.innerHTML='An error occured: HTTP ' + ajax.status;
 				}*/
 			}
 			ajax.send(null);
 		}
 	}
 
-	document.onclick=function(e) {
+	document.onclick = function(e) {
 		var e = e || window.event;
 		var target = e.target != null ? e.target : e.srcElement;
 		if(e.button==0 || e.button==1) {
-			menu_podreczne.style.visibility='hidden';
+			context_menu.style.visibility='hidden';
 		} else if(e.button==2 || e.button==3) {
 			if(target===document.getElementsByTagName('body')[0]) {
-				menu_podreczne.style.zIndex=++zIndex;
-				menu_podreczne.style.top=pY + 'px';
-				menu_podreczne.style.left=pX + 'px';
-				menu_podreczne.style.visibility='visible';
+				context_menu.style.zIndex=++zIndex;
+				context_menu.style.top=pY + 'px';
+				context_menu.style.left=pX + 'px';
+				context_menu.style.visibility='visible';
 			}
 			return false;
 		}
 	}
-	document.ondblclick=function() { return false; }
+	document.ondblclick = function() {
+		return false;
+	}
 
-	function init_icon_moving(ico_obj) {
+	function init_icon_dragging(ico_obj) {
 		try {
-			ico_obj.style.top=localStorage[ico_obj.id + '_top'];
-			ico_obj.style.left=localStorage[ico_obj.id + '_left'];
+			ico_obj.style.top = localStorage[ico_obj.id + '_top'];
+			ico_obj.style.left = localStorage[ico_obj.id + '_left'];
 		} catch(e) {}
-		init_moving(ico_obj, ico_obj);
-		//document.getElementById(ico_obj.id + '_ico').onmousedown=function() { return false; }
-		var oldMU=ico_obj.onmousedown;
-		ico_obj.onmouseup=function(e) {
+		init_dragging(ico_obj, ico_obj);
+		var oldMU = ico_obj.onmousedown;
+		ico_obj.onmouseup = function(e) {
 			if(typeof(oldMD)=='function') oldMU();
 			localStorage[ico_obj.id + '_top']=ico_obj.style.top;
 			localStorage[ico_obj.id + '_left']=ico_obj.style.left;
@@ -88,53 +85,57 @@
 	}
 
 	function activate(zakladka) {
-		var new_active=new Array();
+		var new_active = new Array();
 		new_active.push(zakladka);
 		for(var z in active) {
-			if(zakladka!==active[z]) new_active.push(active[z]);
+			if(zakladka !== active[z]) {
+				new_active.push(active[z]);
+			}
 		}
-		active=new_active;
+		active = new_active;
 	}
 
 	function onTop(obj) {
-		obj.style.zIndex=++zIndex;
+		obj.style.zIndex = ++zIndex;
 		if(active[0]) {
-			active[0].style.fontWeight='normal';
-			tWindows[active[0].id].className='okno w-tle';
+			active[0].style.fontWeight = 'normal';
+			tWindows[active[0].id].className = 'okno w-tle';
 		}
-		obj.className='okno';
-		tZakladki[obj.id].style.fontWeight='bold';
-		tZakladki[obj.id].className='zakladka active-tab';
-		activate(tZakladki[obj.id]);
+		obj.className = 'okno';
+		tTabs[obj.id].style.fontWeight = 'bold';
+		tTabs[obj.id].className = 'zakladka active-tab';
+		activate(tTabs[obj.id]);
 	}
 
-	function zwin_rozwin(zakladka, przycisk) {
-		if(tWindowsState[zakladka.id]==0) {
-			zakladka.style.fontWeight='bold';
-			zakladka.className='zakladka active-tab';
-			tWindows[zakladka.id].style.visibility='visible';
-			onTop(tWindows[zakladka.id]);
-			tWindowsState[zakladka.id]=1;
-			if(active[1]) active[1].style.fontWeight='normal';
-		} else if(tWindows[zakladka.id].style.zIndex!=zIndex && !przycisk) {
-			onTop(tWindows[zakladka.id]);
-			if(active[1]) active[1].style.fontWeight='normal';
-			zakladka.style.fontWeight='bold';
-		} else if(tWindowsState[zakladka.id]==1) {
-			zakladka.style.fontWeight='normal';
-			zakladka.className='zakladka non-active-tab';
-			tWindows[zakladka.id].style.visibility='hidden';
-			tWindowsState[zakladka.id]=0;
-			for(var i=1; i<active.length; ++i) {
-				if(tWindowsState[active[i].id]==1) {
-					active[i].style.fontWeight='bold';
-					tWindows[active[i].id].style.zIndex=++zIndex;
+	function toggleMinimize(tab, button) {
+		if(tWindowsState[tab.id] == 0) {
+			tab.style.fontWeight = 'bold';
+			tab.className = 'zakladka active-tab';
+			tWindows[tab.id].style.visibility = 'visible';
+			onTop(tWindows[tab.id]);
+			tWindowsState[tab.id] = 1;
+			if(active[1]) active[1].style.fontWeight = 'normal';
+		} else if(tWindows[tab.id].style.zIndex != zIndex && !button) {
+			onTop(tWindows[tab.id]);
+			if(active[1]) {
+				active[1].style.fontWeight = 'normal';
+			}
+			tab.style.fontWeight = 'bold';
+		} else if(tWindowsState[tab.id] == 1) {
+			tab.style.fontWeight = 'normal';
+			tab.className = 'zakladka non-active-tab';
+			tWindows[tab.id].style.visibility = 'hidden';
+			tWindowsState[tab.id] = 0;
+			for(var i = 1; i < active.length; ++i) {
+				if(tWindowsState[active[i].id] == 1) {
+					active[i].style.fontWeight = 'bold';
+					tWindows[active[i].id].style.zIndex = ++zIndex;
 					activate(active[i]);
-					return; // nie chcemy, żeby to activate() na dole nam zepsuło
+					return; // omit the activate() at the bottom of the function
 				}
 			}
 		}
-		activate(zakladka);
+		activate(tab);
 	}
 
 	function createWindow(title, left, top, width, height) {
@@ -145,18 +146,18 @@
 		var close = document.createElement('div');
 		var zakladka = document.createElement('div');
 
-		++idNr;
-		var zId='z' + idNr;
-		var wId='w' + idNr;
+		++current_id;
+		var zId='z' + current_id;
+		var wId='w' + current_id;
 
 		zakladka.id=zId;
 		zakladka.onmouseup=function() {
-			zwin_rozwin(this);
+			toggleMinimize(this);
 		}
 		zakladka.innerHTML=title;
 		zakladka.style.fontWeight='bold';
 		zakladka.className='zakladka active-tab';
-		tZakladki[wId]=zakladka;
+		tTabs[wId]=zakladka;
 		taskbar.appendChild(zakladka);
 
 		tWindows[zId]=okno;
@@ -173,7 +174,7 @@
 		mini.className='mini';
 		mini.innerHTML='_';
 		mini.onmouseup=function() {
-			zwin_rozwin(tZakladki[wId], true);
+			toggleMinimize(tTabs[wId], true);
 		}
 
 		close.className='close';
@@ -208,7 +209,7 @@
 			top=(scr_height-height)/2-30
 		}
 
-		init_moving(okno, header, left, top);
+		init_dragging(okno, header, left, top);
 		init_resizing(okno);
 		document.body.appendChild(okno);
 
@@ -216,11 +217,11 @@
 	}
 
 	function closeWindow(w) {
-		taskbar.removeChild(tZakladki[w.id]);
+		taskbar.removeChild(tTabs[w.id]);
 		document.body.removeChild(w);
 		var new_active=new Array();
 		for(var z in active) {
-			if(tZakladki[w.id]!=active[z]) new_active.push(active[z]); // kasujemy informację o aktywności okna
+			if(tTabs[w.id]!=active[z]) new_active.push(active[z]); // kasujemy informację o aktywności okna
 		}
 		active=new_active;
 		for(var i in active) { // poprzednio otwarte okno (niezminimalizowane) staje się aktywne
@@ -231,8 +232,8 @@
 				activate(active[i]);
 			}
 		}
-		delete tWindows[tZakladki[w.id].id];
-		delete tZakladki[w.id];
+		delete tWindows[tTabs[w.id].id];
+		delete tTabs[w.id];
 	}
 
 	document.onmousemove = function (e) {
@@ -245,9 +246,9 @@
 				pX=event.clientX+document.body.scrollLeft;
 			}
 
-			if(moving) {
-				what_moving.style.left = startX + pX - tempX + 'px';
-				what_moving.style.top = startY + pY - tempY + 'px';
+			if(dragging) {
+				what_dragging.style.left = startX + pX - tempX + 'px';
+				what_dragging.style.top = startY + pY - tempY + 'px';
 			}
 
 			if(resizing) {
@@ -341,7 +342,7 @@
 
 
 
-	function init_moving(obj, header, posX, posY) {
+	function init_dragging(obj, header, posX, posY) {
 
 		if(posX) {
 			obj.style.left=posX + 'px';
@@ -382,8 +383,8 @@
 				startY=parseInt(obj.style.top)
 				tempX=pX;
 				tempY=pY;
-				what_moving=obj;
-				moving=true;
+				what_dragging=obj;
+				dragging=true;
 			}
 		}
 
@@ -482,7 +483,7 @@
 	}
 
 	document.onmouseup=function() {
-		moving=false;
+		dragging=false;
 		resizing=false;
 	}
 
