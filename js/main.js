@@ -20,12 +20,15 @@
 		tWindowsState = new Array(), // whether window is minimized or not
 		current_id = 0; // used for id parameter in createWindow()
 		taskbar = document.getElementById('taskbar'),
-		context_menu = document.getElementById('menu_podr');
+		context_menu = document.getElementById('context_menu');
 		active = new Array(); // tabs activation order - 0-indexed tab is currently active
 
 	// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 	function init_icon(obj, title, url) {
+		obj.addEventListener('click', function(e) {
+			e.preventDefault();
+		}, false);
 		init_icon_dragging(obj);
 		add_icon_func(obj, title, url);
 	}
@@ -37,7 +40,7 @@
 	function add_icon_func(obj, title, url) {
 		obj.ondblclick = function() {
 			var w = createWindow(title);
-			w.innerHTML = 'Ładowanie zawarości...';
+			w.innerHTML = 'Loading content...';
 			ajax = new_ajax();
 			ajax.open('GET', url);
 			ajax.onreadystatechange = function() {
@@ -51,24 +54,19 @@
 		}
 	}
 
-	document.onclick = function(e) {
-		var e = e || window.event;
-		var target = e.target != null ? e.target : e.srcElement;
-		if(e.button==0 || e.button==1) {
-			context_menu.style.visibility='hidden';
-		} else if(e.button==2 || e.button==3) {
-			if(target===document.getElementsByTagName('body')[0]) {
-				context_menu.style.zIndex=++zIndex;
-				context_menu.style.top=pY + 'px';
-				context_menu.style.left=pX + 'px';
-				context_menu.style.visibility='visible';
-			}
-			return false;
-		}
-	}
-	document.ondblclick = function() {
-		return false;
-	}
+	document.addEventListener('contextmenu', function(e) {
+		e.preventDefault();
+		context_menu.style.zIndex = ++zIndex;
+		context_menu.style.top = pY + 'px';
+		context_menu.style.left = pX + 'px';
+		context_menu.className = 'show';
+		setTimeout(function() {
+			document.addEventListener('click', function onclick(e) {
+				context_menu.className = '';
+				document.removeEventListener('click', onclick, false);
+			}, false);
+		}, 0);
+	}, false);
 
 	function init_icon_dragging(ico_obj) {
 		try {
@@ -99,9 +97,9 @@
 		obj.style.zIndex = ++zIndex;
 		if(active[0]) {
 			active[0].style.fontWeight = 'normal';
-			tWindows[active[0].id].className = 'okno w-tle';
+			tWindows[active[0].id].className = 'window in-background';
 		}
-		obj.className = 'okno';
+		obj.className = 'window';
 		tTabs[obj.id].style.fontWeight = 'bold';
 		tTabs[obj.id].className = 'zakladka active-tab';
 		activate(tTabs[obj.id]);
@@ -161,7 +159,7 @@
 		taskbar.appendChild(zakladka);
 
 		tWindows[zId]=okno;
-		okno.className='okno';
+		okno.className='window';
 		okno.id=wId;
 
 		tWindowsState[zId]=1;
@@ -228,7 +226,7 @@
 			if(tWindowsState[active[i].id]==1) {
 				active[i].style.fontWeight='bold';
 				tWindows[active[i].id].style.zIndex=++zIndex;
-				tWindows[active[i].id].className='okno';
+				tWindows[active[i].id].className='window';
 				activate(active[i]);
 			}
 		}
@@ -236,7 +234,7 @@
 		delete tTabs[w.id];
 	}
 
-	document.onmousemove = function (e) {
+	document.onmousemove = function(e) {
 
 			if(e) {
 				pX=e.pageX;
@@ -489,14 +487,9 @@
 
 	// Let's go:
 
-	var elems=document.getElementsByTagName('a');
-
-	for(var a in elems) {
-		if(elems[a].className=='ikona') {
-			init_icon(elems[a], elems[a].title, elems[a].href + '&ajax');
-			elems[a].onclick=function() { return false; }
-			elems[a].title='';
-		}
-	}
+	Array.prototype.slice.call(document.getElementsByClassName('icon')).forEach(function(el) {
+		init_icon(el, el.title, el.href + '&ajax');
+		el.title='';
+	});
 
 })();

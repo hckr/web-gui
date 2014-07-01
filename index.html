@@ -1,55 +1,46 @@
-﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-				"http://www.w3.org/TR/html4/strict.dtd">
-
-<html lang="pl">
-
+﻿<!DOCTYPE html>
+<html lang="en">
 <head>
-
 	<title>Web GUI</title>
-	<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
-	<link rel="stylesheet" type="text/css" href="css/main.css">
-
+	<meta charset="UTF-8">
+	<link rel="stylesheet"href="css/main.css">
 </head>
-
 <body>
+	<div id="taskbar"><!-- tabs added dynamicly --></div>
 
-<div id="taskbar"><!-- dynamicznie dodawane zakładki do okienek --></div>
+	<a id="home" class="icon" href="content.php?s=home" title="Home">
+		<div id="home_ico" class="obrazek"><!-- image added with CSS --></div>
+		<div class="podpis">Home</div>
+	</a>
 
-<a id="home" class="ikona" href="content.php?s=home" title="Home">
-	<div id="home_ico" class="obrazek"><!-- obrazek wstawiany przez CSS --></div>
-	<div class="podpis">Home</div>
-</a>
+	<a id="about-me" class="icon" href="content.php?s=about-me" title="About me">
+		<div id="about-me_ico" class="obrazek"><!-- image added with CSS --></div>
+		<div class="podpis">About me</div>
+	</a>
 
-<a id="about-me" class="ikona" href="content.php?s=about-me" title="About me">
-	<div id="about-me_ico" class="obrazek"><!-- obrazek wstawiany przez CSS --></div>
-	<div class="podpis">About me</div>
-</a>
+	<a id="tips" class="icon" href="content.php?s=tips" title="IT tips">
+		<div id="tips_ico" class="obrazek"><!-- image added with CSS --></div>
+		<div class="podpis">IT tips</div>
+	</a>
 
-<a id="tips" class="ikona" href="content.php?s=tips" title="IT tips">
-	<div id="tips_ico" class="obrazek"><!-- obrazek wstawiany przez CSS --></div>
-	<div class="podpis">IT tips</div>
-</a>
+	<a id="download" class="icon" href="content.php?s=download" title="Download">
+		<div id="download_ico" class="obrazek"><!-- image added with CSS --></div>
+		<div class="podpis">Download</div>
+	</a>
 
-<a id="download" class="ikona" href="content.php?s=download" title="Download">
-	<div id="download_ico" class="obrazek"><!-- obrazek wstawiany przez CSS --></div>
-	<div class="podpis">Download</div>
-</a>
+	<a id="contact" class="icon" href="content.php?s=contact" title="Contact">
+		<div id="contact_ico" class="obrazek"><!-- image added with CSS --></div>
+		<div class="podpis">Contact</div>
+	</a>
 
-<a id="contact" class="ikona" href="content.php?s=contact" title="Contact">
-	<div id="contact_ico" class="obrazek"><!-- obrazek wstawiany przez CSS --></div>
-	<div class="podpis">Contact</div>
-</a>
+	<ul id="context_menu">
+	<li>pozycja 1</li>
+	<li>pozycja 2</li>
+	<li>pozycja 3</li>
+	<li>pozycja 4</li>
+	<li>pozycja 5</li>
+	</ul>
 
-<ul id="menu_podr">
-<li>pozycja 1</li>
-<li>pozycja 2</li>
-<li>pozycja 3</li>
-<li>pozycja 4</li>
-<li>pozycja 5</li>
-</ul>
-
-<script type="text/javascript" src="js/main.js"></script>
-
+	<script src="js/main.js"></script>
 </body>
-
 </html>
