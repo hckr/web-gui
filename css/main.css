@@ -46,3 +46,6 @@ h2 { position: relative; left: -20px; font-size: 18px; font-weight: normal; padd
 #context_menu.show { display: block; }
 #context_menu li { padding: 2px 5px; }
 #context_menu li:hover { background: #73C3FF; }
+
+.fork_me { opacity: .3; transition: opacity ease-in .1s; position: absolute; text-indent: -9999px; overflow: hidden; top: 0; right: 0; width: 150px; height: 150px; background: url('//bitbucket.org/zgramana/bitbucket-ribbons/raw/988dffc5fbeb/png/bitbucket-ribbon-dark-blue.png'); }
+.fork_me:hover { opacity: 1; }
