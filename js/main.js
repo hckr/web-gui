@@ -1,5 +1,66 @@
 ;(function() {
 
+	var globalConfig = {
+		desktop: {
+			boundaries: (function() {
+				var _top = 0,
+					_left = 0,
+					_right,
+					_bottom;
+				document.addEventListener('resize', function() {
+					_right = document.body.clientWidth;
+					_bottom = document.body.clientHeight;
+				}, false);
+				return {
+					top: _top,
+					left: _left,
+					right: _right,
+					bottom: _bottom
+				}
+			}),
+			size: (function() {
+				var _width,
+					_height;
+				document.addEventListener('resize', function() {
+					_width = document.body.clientWidth;
+					_height = document.body.clientHeight;
+				}, false);
+				return {
+					width: _width,
+					height: _height
+				}
+			})
+		},
+		defaultWindow: (function() {
+			var defaultWidth = 600,
+				defaultHeight = 500,
+				minInitTop = 10,
+				minInitLeft = 10,
+				defaultTitle = '';
+			return {
+				title: function() {
+					return defaultTitle;
+				},
+				width: function() {
+					return defaultWidth;
+				},
+				height: function() {
+					return defaultHeight;
+				},
+				top: function(height) {
+					height = height || defaultHeight;
+					var top = document.body.clientHeight / 2 - height / 2 - 50;
+					return top >= minInitTop ? top : minInitTop;
+				},
+				left: function(width) {
+					width = width || defaultWidth;
+					var left = document.body.clientWidth / 2 - width / 2;
+					return left >= minInitLeft ? left : minInitLeft;
+				}
+			}
+		})()
+	};
+
 	document.onselectstart=function() {
 		if(dragging || resizing) {
 			return false;
@@ -18,7 +79,7 @@
 		tTabs = new Array(),
 		tWindows = new Array(),
 		tWindowsState = new Array(), // whether window is minimized or not
-		current_id = 0; // used for id parameter in createWindow()
+		current_id = 0; // used for id parameter in Window()
 		taskbar = document.getElementById('taskbar'),
 		context_menu = document.getElementById('context_menu');
 		active = new Array(); // tabs activation order - 0-indexed tab is currently active
@@ -38,20 +99,24 @@
 	}
 
 	function add_icon_func(obj, title, url) {
-		obj.ondblclick = function() {
-			var w = createWindow(title);
-			w.innerHTML = 'Loading content...';
+		obj.addEventListener('dblclick', function() {
+			var w = Window({
+				title: title,
+				width: 400,
+				height: 350,
+			});
+			w.showContent('Loading content...');
 			ajax = new_ajax();
 			ajax.open('GET', url);
 			ajax.onreadystatechange = function() {
 				if(ajax.readyState==4 && ajax.status==200) {
-					w.innerHTML = ajax.responseText;
+					w.showContent(ajax.responseText);
 				}/* else {
 					w.innerHTML='An error occured: HTTP ' + ajax.status;
 				}*/
 			}
 			ajax.send(null);
-		}
+		}, false);
 	}
 
 	document.addEventListener('contextmenu', function(e) {
@@ -136,38 +201,49 @@
 		activate(tab);
 	}
 
-	function createWindow(title, left, top, width, height) {
-		var okno = document.createElement('div');
-		var header = document.createElement('div');
-		var zawartosc = document.createElement('div');
-		var mini = document.createElement('div');
-		var close = document.createElement('div');
-		var zakladka = document.createElement('div');
+	function loadWindowProps(props) {
+		return {
+			title: props.title || globalConfig.defaultWindow.title(),
+			width: props.width || globalConfig.defaultWindow.width(),
+			height: props.height || globalConfig.defaultWindow.height(),
+			top: props.top || globalConfig.defaultWindow.top(props.height),
+			left: props.left || globalConfig.defaultWindow.left(props.width),
+		}
+	}
+
+	function Window(properties) {
+		props = loadWindowProps(properties);
+		var frame = document.createElement('div'),
+			header = document.createElement('div'),
+			content = document.createElement('div'),
+			mini = document.createElement('div'),
+			close = document.createElement('div'),
+			zakladka = document.createElement('div');
 
 		++current_id;
-		var zId='z' + current_id;
-		var wId='w' + current_id;
+		var zId='z' + current_id,
+			wId='w' + current_id;
 
 		zakladka.id=zId;
 		zakladka.onmouseup=function() {
 			toggleMinimize(this);
 		}
-		zakladka.innerHTML=title;
+		zakladka.innerHTML=props.title;
 		zakladka.style.fontWeight='bold';
 		zakladka.className='zakladka active-tab';
 		tTabs[wId]=zakladka;
 		taskbar.appendChild(zakladka);
 
-		tWindows[zId]=okno;
-		okno.className='window';
-		okno.id=wId;
+		tWindows[zId]=frame;
+		frame.className='window';
+		frame.id=wId;
 
 		tWindowsState[zId]=1;
 
 		header.className='header';
-		header.innerHTML=title;
+		header.innerHTML=props.title;
 
-		zawartosc.className='tlo';
+		content.className='tlo';
 
 		mini.className='mini';
 		mini.innerHTML='_';
@@ -178,40 +254,30 @@
 		close.className='close';
 		close.innerHTML='X';
 		close.onmouseup=function() {
-			closeWindow(okno);
+			closeWindow(frame);
 		}
 
-		okno.appendChild(header);
-		okno.appendChild(zawartosc);
-		okno.appendChild(mini);
-		okno.appendChild(close);
-		onTop(okno);
-		var oldMD=okno.onmousedown;
-		okno.onmousedown=function() {
-			if(typeof(oldMD)=='function') oldMD();
-			onTop(okno);
-		}
+		frame.appendChild(header);
+		frame.appendChild(content);
+		frame.appendChild(mini);
+		frame.appendChild(close);
+		onTop(frame);
+		frame.addEventListener('mousedown', function() {
+			onTop(frame);
+		}, false);
 
-		if(!width) width=600;
-		if(!height) height=500;
-		okno.style.width=width + 'px';
-		okno.style.height=height + 'px';
+		frame.style.width = props.width + 'px';
+		frame.style.height = props.height + 'px';
 
-		if(!left){
-			var scr_width=(document.body.clientWidth||window.innerWidth);
-			left=(scr_width-width)/2
-		}
+		init_dragging(frame, header, props.left, props.top);
+		init_resizing(frame);
+		document.body.appendChild(frame);
 
-		if(!top) {
-			var scr_height=(document.body.clientHeight||window.innerHeight);
-			top=(scr_height-height)/2-30
-		}
-
-		init_dragging(okno, header, left, top);
-		init_resizing(okno);
-		document.body.appendChild(okno);
-
-		return zawartosc;
+		return {
+			showContent: function(c) {
+				content.innerHTML = c;
+			}
+		};
 	}
 
 	function closeWindow(w) {
@@ -234,7 +300,7 @@
 		delete tTabs[w.id];
 	}
 
-	document.onmousemove = function(e) {
+	document.addEventListener('mousemove', function(e) {
 
 			if(e) {
 				pX=e.pageX;
@@ -247,6 +313,11 @@
 			if(dragging) {
 				what_dragging.style.left = startX + pX - tempX + 'px';
 				what_dragging.style.top = startY + pY - tempY + 'px';
+				if(parseInt(what_dragging.style.left) + parseInt(what_dragging.style.width) > document.body.clientWidth) {
+					what_dragging.style.left = (parseInt(document.body.clientWidth) - parseInt(what_dragging.style.width)) + 'px';
+				} else if(parseInt(what_dragging.style.left) < 0) {
+					what_dragging.style.left = 0;
+				}
 			}
 
 			if(resizing) {
@@ -335,47 +406,35 @@
 				}
 
 			}
-	}
-
-
-
+	}, false);
 
 	function init_dragging(obj, header, posX, posY) {
 
 		if(posX) {
 			obj.style.left=posX + 'px';
-		}
-		else if(obj.currentStyle) {
+		} else if(obj.currentStyle) {
 			// IE, Opera
 			obj.style.left=obj.currentStyle['left'];
-		}
-		else if(document.defaultView && document.defaultView.getComputedStyle) {
+		} else if(document.defaultView && document.defaultView.getComputedStyle) {
 			// Gecko,Webkit
 			obj.style.left=document.defaultView.getComputedStyle(obj, '')['left'] || {};
-		}
-		else {
+		} else {
 			obj.style.left= '0px';
 		}
 
 		if(posY) {
 			obj.style.top=posY + 'px';
-		}
-		else if(obj.currentStyle) {
+		} else if(obj.currentStyle) {
 			// IE, Opera
 			obj.style.top=obj.currentStyle['top'];
-		}
-		else if(document.defaultView && document.defaultView.getComputedStyle) {
+		} else if(document.defaultView && document.defaultView.getComputedStyle) {
 			// Gecko, Webkit
 			obj.style.top=document.defaultView.getComputedStyle(obj, '')['top'] || {};
-		}
-		else {
+		} else {
 			obj.style.top= '0px';
 		}
 
-		var oldMD=obj.onmousedown;
-		header.onmousedown=function(e) {
-			var e = e || window.event;
-			if(typeof(oldMD)=='function') oldMD(e);
+		header.addEventListener('mousedown', function(e) {
 			if(!cursor_resizing && (e.button==0 || e.button==1)) {
 				startX=parseInt(obj.style.left);
 				startY=parseInt(obj.style.top)
@@ -384,16 +443,13 @@
 				what_dragging=obj;
 				dragging=true;
 			}
-		}
+		}, false);
 
 	}
 
 	function init_resizing(obj) {
 
-		var oldMD=obj.onmousedown;
-		obj.onmousedown=function(e) {
-			var e = e || window.event;
-			if(typeof(oldMD)=='function') oldMD();
+		obj.addEventListener('mousedown', function(e) {
 			if(cursor_resizing && (e.button==0 || e.button==1)) {
 				startWidth = parseInt(obj.scrollWidth);
 				startHeight = parseInt(obj.scrollHeight);
@@ -404,18 +460,13 @@
 				what_resizing=obj;
 				resizing=true;
 			}
-		}
+		}, false);
 
-		var oldMM=obj.onmousemove;
-
-		obj.onmousemove=function() {
-			if(typeof(oldMM)=='function') oldMM();
-
-			var width, height, top, left;
-			width=parseInt(obj.scrollWidth);
-			height=parseInt(obj.scrollHeight);
-			top=parseInt(obj.style.top);
-			left=parseInt(obj.style.left);
+		obj.addEventListener('mousemove', function() {
+			var width = parseInt(obj.scrollWidth),
+				height = parseInt(obj.scrollHeight),
+				top = parseInt(obj.style.top),
+				left = parseInt(obj.style.left);
 
 			if(pY>(top+height-3) && pX>(left+width-3)) { // dół i prawo
 				if(!resizing) {
@@ -423,71 +474,63 @@
 					resizing_dir='right-bottom';
 				}
 				cursor_resizing=true;
-			}
-			else if(pY>(top+height-3) && pX<(left+3)) { // dół i lewo
+			} else if(pY>(top+height-3) && pX<(left+3)) { // dół i lewo
 				if(!resizing) {
 					obj.style.cursor='sw-resize';
 					resizing_dir='left-bottom';
 				}
 				cursor_resizing=true;
-			}
-			else if(pY<(top+3) && pX<(left+3)) { // góra i lewo
+			} else if(pY<(top+3) && pX<(left+3)) { // góra i lewo
 				if(!resizing) {
 					obj.style.cursor='nw-resize';
 					resizing_dir='left-top';
 				}
 				cursor_resizing=true;
-			}
-			else if(pY<(top+3) && pX>(left+width-3)) { // góra i prawo
+			} else if(pY<(top+3) && pX>(left+width-3)) { // góra i prawo
 				if(!resizing) {
 					obj.style.cursor='ne-resize';
 					resizing_dir='right-top';
 				}
 				cursor_resizing=true;
-			}
-			else if(pX>(left+width-3)) { // prawa
+			} else if(pX>(left+width-3)) { // prawa
 				if(!resizing) {
 					obj.style.cursor='e-resize';
 					resizing_dir='right';
 				}
 				cursor_resizing=true;
-			}
-			else if(pX<(left+3)) { // lewa
+			} else if(pX<(left+3)) { // lewa
 				if(!resizing) {
 					obj.style.cursor='w-resize';
 					resizing_dir='left';
 				}
 				cursor_resizing=true;
-			}
-			else if(pY<(top+3)) { // góra
+			} else if(pY<(top+3)) { // góra
 				if(!resizing) {
 					obj.style.cursor='n-resize';
 					resizing_dir='top';
 				}
 				cursor_resizing=true;
-			}
-			else if(pY>(top+height-3)) { // dół
+			} else if(pY>(top+height-3)) { // dół
 				if(!resizing) {
 					obj.style.cursor='s-resize';
 					resizing_dir='bottom';
 				}
 				cursor_resizing=true;
-			}
-			else {
+			} else {
 				obj.style.cursor='auto';
 				cursor_resizing=false;
 			}
-		}
+		}, false);
 	}
 
-	document.onmouseup=function() {
+	document.addEventListener('mouseup', function() {
 		dragging=false;
 		resizing=false;
-	}
+	}, false);
 
 	// Let's go:
 
-	Array.prototype.slice.call(document.getElementsByClassName('icon')).forEach(function(el) {
+	[].slice.call(document.getElementsByClassName('icon')).forEach(function(el) {
 		init_icon(el, el.title, el.href + '&ajax');
 		el.title='';
 	});
